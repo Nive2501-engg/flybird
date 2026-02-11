@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flappy Bird Clone</title>
+  <style>
+    body { margin:0; background:#70c5ce; display:flex; justify-content:center; align-items:center; height:100vh; }
+    canvas { background:#70c5ce; border:2px solid #333; border-radius:8px; }
+    #info { position:absolute; top:10px; left:50%; transform:translateX(-50%); 
+            font-family:Arial; font-size:20px; font-weight:bold; color:#fff; }
+  </style>
+</head>
+<body>
+  <div id="info">Press SPACE or TAP to jump</div>
+  <canvas id="gameCanvas" width="400" height="500"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let frames = 0;
+    let score = 0;
+    let bestScore = 0;
+    let gameOver = false;
+
+    const bird = {
+      x: 50,
+      y: 150,
+      w: 30,
+      h: 30,
+      gravity: 0.25,
+      lift: -5,
+      velocity: 0,
+      draw() {
+        ctx.fillStyle = "yellow";
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.w/2, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = "#333";
+        ctx.stroke();
+        ctx.closePath();
+        ctx.fillStyle = "black";
+        ctx.fillRect(this.x+5, this.y-5, 5, 5); // eye
+      },
+      update() {
+        this.velocity += this.gravity;
+        this.y += this.velocity;
+        if (this.y + this.h/2 >= canvas.height) { gameOver = true; }
+        if (this.y - this.h/2 <= 0) { this.y = this.h/2; this.velocity = 0; }
+      },
+      flap() { this.velocity = this.lift; }
+    };
+
+    const pipes = [];
+    function createPipe() {
+      let gap = 100;
+      let top = Math.random() * (canvas.height - gap - 80) + 20;
+      pipes.push({ x: canvas.width, y: top, w: 50, gap });
+    }
+
+    function drawPipes() {
+      ctx.fillStyle = "green";
+      for (let i = 0; i < pipes.length; i++) {
+        let p = pipes[i];
+        // top pipe
+        ctx.fillRect(p.x, 0, p.w, p.y);
+        // bottom pipe
+        ctx.fillRect(p.x, p.y + p.gap, p.w, canvas.height - (p.y + p.gap));
+      }
+    }
+
+    function updatePipes() {
+      for (let i = 0; i < pipes.length; i++) {
+        let p = pipes[i];
+        p.x -= 2;
+
+        // collision
+        if (bird.x + bird.w/2 > p.x && bird.x - bird.w/2 < p.x + p.w) {
+          if (bird.y - bird.h/2 < p.y || bird.y + bird.h/2 > p.y + p.gap) {
+            gameOver = true;
+          }
+        }
+
+        // score
+        if (p.x + p.w === bird.x) {
+          score++;
+        }
+
+        // remove off-screen
+        if (p.x + p.w < 0) {
+          pipes.splice(i, 1);
+          i--;
+        }
+      }
+
+      if (frames % 100 === 0) createPipe();
+    }
+
+    function drawScore() {
+      ctx.fillStyle = "#fff";
+      ctx.font = "20px Arial";
+      ctx.fillText("Score: " + score, 10, 25);
+      ctx.fillText("Best: " + bestScore, 10, 50);
+    }
+
+    function loop() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      bird.draw();
+      drawPipes();
+      drawScore();
+
+      if (!gameOver) {
+        bird.update();
+        updatePipes();
+        frames++;
+        requestAnimationFrame(loop);
+      } else {
+        bestScore = Math.max(score, bestScore);
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = "#fff";
+        ctx.font = "30px Arial";
+        ctx.fillText("Game Over!", canvas.width/2 - 80, canvas.height/2 - 20);
+        ctx.font = "20px Arial";
+        ctx.fillText("Score: " + score, canvas.width/2 - 40, canvas.height/2 + 10);
+        ctx.fillText("Press SPACE or TAP to Restart", canvas.width/2 - 140, canvas.height/2 + 40);
+      }
+    }
+
+    // Controls
+    document.addEventListener("keydown", e => {
+      if (e.code === "Space") {
+        if (gameOver) restart();
+        else bird.flap();
+      }
+    });
+    canvas.addEventListener("click", () => {
+      if (gameOver) restart();
+      else bird.flap();
+    });
+
+    function restart() {
+      bird.y = 150;
+      bird.velocity = 0;
+      pipes.length = 0;
+      score = 0;
+      frames = 0;
+      gameOver = false;
+      loop();
+    }
+
+    // Start game
+    createPipe();
+    loop();
+  </script>
+</body>
+</html>
